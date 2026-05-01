@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { db } from "./firebase";
+import { collection, addDoc, getDocs } from "firebase/firestore";
 
 function App() {
   const [role, setRole] = useState(null);
@@ -19,34 +21,56 @@ function App() {
     </div>
   );
 }
+
 function Teacher() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
 
-  const handleSave = () => {
-    console.log({ question, answer });
+  const handleSave = async () => {
+    await addDoc(collection(db, "questions"), {
+      questionText: question,
+      answer: Number(answer),
+    });
+
+    alert("Saved!");
   };
 
   return (
     <div>
       <h2>Teacher</h2>
+
       <input
         placeholder="Question"
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
       />
+
       <input
         placeholder="Answer"
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
       />
+
       <button onClick={handleSave}>Save Question</button>
     </div>
   );
 }
+
 function Student() {
   const [answer, setAnswer] = useState("");
-  const correctAnswer = 5; // TEMP
+  const [questionData, setQuestionData] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const snapshot = await getDocs(collection(db, "questions"));
+      const data = snapshot.docs.map(doc => doc.data());
+      setQuestionData(data[0]);
+    };
+
+    fetchData();
+  }, []);
+
+  const correctAnswer = questionData?.answer;
 
   const checkAnswer = () => {
     const num = Number(answer);
@@ -63,7 +87,8 @@ function Student() {
   return (
     <div>
       <h2>Student</h2>
-      <p>Solve: 2 + 3</p>
+
+      <p>{questionData?.questionText || "Loading..."}</p>
 
       <input
         value={answer}
@@ -74,37 +99,5 @@ function Student() {
     </div>
   );
 }
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
 
-const firebaseConfig = {
-  // paste your config here
-};
-
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-import { db } from "./firebase";
-import { collection, addDoc } from "firebase/firestore";
-
-const handleSave = async () => {
-  await addDoc(collection(db, "questions"), {
-    questionText: question,
-    answer: Number(answer),
-  });
-
-  alert("Saved!");
-};
-import { collection, getDocs } from "firebase/firestore";
-import { useEffect, useState } from "react";
-
-const [questionData, setQuestionData] = useState(null);
-
-useEffect(() => {
-  const fetchData = async () => {
-    const snapshot = await getDocs(collection(db, "questions"));
-    const data = snapshot.docs.map(doc => doc.data());
-    setQuestionData(data[0]); // just first for now
-  };
-
-  fetchData();
-}, []);
+export default App;
