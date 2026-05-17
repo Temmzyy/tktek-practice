@@ -4,19 +4,21 @@ import { db } from "./firebase";
 import { collection, addDoc, getDocs } from "firebase/firestore";
 
 function App() {
-  const [role, setRole] = useState(null);
+  const [mode, setMode] = useState(null);
 
   if (!role) {
     return (
       <div>
         <h1>TKTeK Practice</h1>
 
-        <button onClick={() => setRole("student")}>
-          I'm a Student
+        <button onClick={() => setMode("student")}>
+          Student Practice
         </button>
-
-        <button onClick={() => setRole("teacher")}>
-          I'm a Teacher
+        <button onClick={() => setMode("teacher")}>
+          Teacher Question Creator
+        </button>
+        <button onClick={() => setMode("generator")}>
+          Test Question Generator
         </button>
       </div>
     );
@@ -24,7 +26,11 @@ function App() {
 
   return (
     <div>
-      {role === "teacher" ? <Teacher /> : <Student />}
+      {mode === "student" && <Student />}
+
+      {mode === "teacher" && <Teacher />}
+
+      {mode === "generator" && <Generator />}
     </div>
   );
 }
@@ -34,10 +40,12 @@ function Teacher() {
   const [answer, setAnswer] = useState("");
 
   const handleSave = async () => {
-    await addDoc(collection(db, "questions"), {
-      questionText: question,
-      answer: Number(answer),
-    });
+    
+await addDoc(collection(db, "questions"), {
+  questionText: question,
+  answer: Number(answer),
+  createdAt: Date.now()
+});
 
     alert("Saved!");
   };
@@ -68,20 +76,63 @@ function Teacher() {
 function Student() {
   const [answer, setAnswer] = useState("");
   const [questionData, setQuestionData] = useState(null);
+  const [index, setIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       const snapshot = await getDocs(collection(db, "questions"));
 
-      const data = snapshot.docs.map((doc) => doc.data());
+      const data = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-      setQuestionData(data[0]);
-    };
+    setQuestionData(data);
+  };
+function Generator() {
+  const [questions, setQuestions] = useState([]);
 
-    fetchData();
-  }, []);
+  const generateQuestions = () => {
+    let generated = [];
 
-  const correctAnswer = questionData?.answer;
+    for (let i = 0; i < 10; i++) {
+      const a = Math.floor(Math.random() * 20) + 1;
+      const b = Math.floor(Math.random() * 20) + 1;
+
+      generated.push({
+        question: `${a} + ${b}`,
+        answer: a + b,
+      });
+    }
+
+    setQuestions(generated);
+  };
+
+  return (
+    <div>
+      <h2>Teacher Test Generator</h2>
+
+      <button onClick={generateQuestions}>
+        Generate Test
+      </button>
+
+      {questions.map((q, index) => (
+        <div key={index}>
+          <p>
+            {index + 1}. {q.question} = ___
+          </p>
+
+          <small>Answer: {q.answer}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+  fetchData();
+}, []);
+
+  const correctAnswer = questionData?.[index]?.answer;
 
   const checkAnswer = () => {
     const num = Number(answer);
@@ -100,9 +151,8 @@ function Student() {
       <h2>Student</h2>
 
       <p>
-        {questionData?.questionText || "Loading..."}
+  {questionData?.[index]?.questionText || "Loading..."}
       </p>
-
       <input
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
@@ -110,6 +160,13 @@ function Student() {
 
       <button onClick={checkAnswer}>
         Submit
+      </button>
+
+      <button onClick={() => {
+        if (index < (questionData?.length || 0) - 1) { 
+        setIndex(index + 1)}}
+      }>
+          Next Question
       </button>
     </div>
   );
